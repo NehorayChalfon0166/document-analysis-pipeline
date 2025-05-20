@@ -16,19 +16,23 @@ try:
 except LookupError:
     nltk.download('stopwords')
 
+#set up
+translator = str.maketrans('', '', string.punctuation)
+stop_words = set(stopwords.words('english'))
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
 # Load from file
 with open("newsgroups_data.pkl", "rb") as f:
     newsgroups = pickle.load(f)
 
-stop_words = set(stopwords.words('english'))
+#readies the pur etext before tokenazation
 first_doc = newsgroups.data[0].lower()
-first_doc_tokenized = word_tokenize(first_doc)
+first_doc = first_doc.translate(translator)
 
-doc_tokenized_no_stop_words = [token for token in first_doc_tokenized if token not in stop_words]
-cleaned_doc = [word for word in doc_tokenized_no_stop_words if not all(char in string.punctuation for char in word)]
-cleaned_text = " ".join(cleaned_doc)
-# Create a summarization pipeline using the 'facebook/bart-large-cnn' model
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-output = summarizer(cleaned_text)
+#tokenize text
+first_doc_tokenized = word_tokenize(first_doc)
+doc_tokenized_no_stop_words = [token for token in first_doc_tokenized if token not in stop_words] #remove stop words
+
+# Create a summarization pipeline an LLM
+output = summarizer(first_doc)
 print(output)
