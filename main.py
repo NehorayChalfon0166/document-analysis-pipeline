@@ -3,6 +3,7 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import string
+from transformers import pipeline
 
 # Check and download only if not already present
 try:
@@ -26,4 +27,8 @@ first_doc_tokenized = word_tokenize(first_doc)
 
 doc_tokenized_no_stop_words = [token for token in first_doc_tokenized if token not in stop_words]
 cleaned_doc = [word for word in doc_tokenized_no_stop_words if not all(char in string.punctuation for char in word)]
-print(cleaned_doc)
+cleaned_text = " ".join(cleaned_doc)
+# Create a summarization pipeline using the 'facebook/bart-large-cnn' model
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+output = summarizer(cleaned_text)
+print(output)
