@@ -1,11 +1,11 @@
 # main.py
 import pickle
 import nltk
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import string
 from transformers import pipeline
 import os
+from tqdm import tqdm
 
 # Check and download only if not already present
 try:
@@ -35,24 +35,47 @@ except FileNotFoundError:
     print(f"Error: Data file not found at {data_path}")
     print("Please run download_data.py first.")
     exit()
-
+    
 # Function to preprocess and summarize a document
 def preprocess_and_summarize(document_text):
     # Preprocess the text
-    processed_text = document_text.lower().translate(translator)  # Use original text for summarizer for now
-    # tokenized_for_other_tasks = [token for token in word_tokenize(processed_text) if token not in stop_words]
+    processed_text = document_text.lower().translate(translator)
 
-    # BART performs better with the full, less preprocessed text 
-    # Becasuse they handle tokenization internally, and stop words can provide context.
-    output = summarizer(document_text, max_length=150, min_length=30, do_sample=False)  # BART takes raw text
-    print("Summary:")
-    print(output[0]['summary_text'])  # Access the summary text
-    # return output[0]['summary_text'], tokenized_for_other_tasks  # if you need them
+    # Estimate token count (roughly 1 word = 1.3 tokens on average for English)
+    word_count = len(processed_text.split())
+    token_estimate = int(word_count * 1.3)
 
-# Example: Process the first 3 documents
-for i in range(min(3, len(newsgroups.data))):
-    print(f"--- Processing Document {i} ---")
-    preprocess_and_summarize(newsgroups.data[i])
+    # Set max_length dynamically
+    max_len = max(40, int(token_estimate * 0.5))  # 40 is a reasonable floor
+    max_len = min(max_len, 150)  # cap it for performance
 
-# for specific document:
-# preprocess_and_summarize(newsgroups.data[5])
+    # Perform summarization
+    output = summarizer(
+        processed_text,
+        max_length=max_len,
+        min_length=30,
+        do_sample=False
+    )
+
+    return output[0]['summary_text']
+
+# Example: Process the first N documents
+num_docs_to_process = min(3, len(newsgroups.data))  # Or a larger number
+print(f"Processing {num_docs_to_process} documents...\n")
+
+summaries = []
+
+if num_docs_to_process > 0:
+    with tqdm(total=num_docs_to_process, desc="Summarizing Documents", ncols=80) as pbar:
+        for i in range(num_docs_to_process):
+            summary = preprocess_and_summarize(newsgroups.data[i])
+            summaries.append((i, summary))
+            pbar.update(1)
+    
+    # Use tqdm.write() instead of print() to avoid interfering with the progress bar
+    for i, summary in summaries:
+        tqdm.write(f"\n--- Document {i} ---")
+        tqdm.write("Summary:")
+        tqdm.write(summary)
+else:
+    print("No documents found in the dataset.")
